@@ -13,7 +13,7 @@ const { dashAuthenticate } = require('@pyrondev/dash-auth');
 (async () => {
 	const dashAuth = await new dashAuthenticate("email", "password");
 	var Dash = await new dash(dashAuth);
-	console.log(await Dash.getWorlds()); // lists all realms that the account owns or has joined
+	console.log(await Dash.getWorlds()); // returns a list of all realms that the account owns or has joined
 
 })();
 ```
