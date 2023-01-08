@@ -5,8 +5,9 @@ An Wapper for the Bedrock Realms API [here](https://www.postman.com/LucienHH/wor
 
 currently for JS but python support might come soon
 
-###javascript (async)
-`
+### javascript (async)
+
+```js
 const { dash } = require('./dash/index.js');
 const { dashAuthenticate } = require('@pyrondev/dash-auth');
 (async () => {
@@ -15,4 +16,4 @@ const { dashAuthenticate } = require('@pyrondev/dash-auth');
 	console.log(await Dash.getWorlds()); // lists all realms that the account owns or has joined
 
 })();
-`
+```
