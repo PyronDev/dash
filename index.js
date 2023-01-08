@@ -38,7 +38,19 @@ class dash {
 		if (!response.hasOwnProperty("servers")) {
 			throw new DashError(`Invalid property: object does not have a property with the name "servers"`);
 		}
-		try { return await response["servers"]; } catch { throw new DashError(DashError.UnexpectedResult); }
+		try { return await response["servers"]; } catch { throw new DashError(DashError.UnexpectedResult); };
+	}
+
+	async getOwnedRealmFromId(id) {
+		var response = await getApi(`/worlds/${id}`, this);
+		switch (response.status){
+			case 403:
+				throw new DashError("You do not own this realm");
+			case 404:
+				throw new DashError("That realm doesnt exist");
+			case 200:
+				return await response.json()
+		}
 	}
 }
 
