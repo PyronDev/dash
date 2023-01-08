@@ -1,0 +1,30 @@
+{
+  "name": "@pyrondev/dash",
+  "version": "1.0.0",
+  "description": "MCBE Realms javascript api wrapper ",
+  "main": "index.js",
+  "dependencies": {
+	"axios": "^0.21.4",
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PyronDev/dash.git"
+  },
+  "keywords": [
+    "dash",
+    "api",
+    "wrapper",
+    "mcbe",
+    "realms"
+  ],
+  "author": "pyrondev",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/PyronDev/dash/issues"
+  },
+  "homepage": "https://github.com/PyronDev/dash#readme",
+  "devDependencies": {}
+}
