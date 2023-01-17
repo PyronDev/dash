@@ -4,7 +4,8 @@
   "description": "MCBE Realms javascript api wrapper ",
   "main": "index.js",
   "dependencies": {
-	"axios": "^0.21.4"
+    "node-fetch": "^3.3.0",
+    "chalk": "4.1.2"
   },
   "scripts": {
     "test": "node test.js"
