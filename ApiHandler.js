@@ -7,12 +7,13 @@ async function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getApi(path, dashClass, customHeaders = {}, retries = 0) {
-	headers = {"authorization": `XBL3.0 x=${dashClass.userHash};${dashClass.xstsToken}`,"client-version": await getCurrentVersion(),"user-agent": "MCPE/UWP",}
-		Object.keys(customHeaders).forEach(key => {
-			headers[key] = customHeaders[key];
-		})
-	try{ var response = await fetch(`https://pocket.realms.minecraft.net${path}`, { "headers": headers }); } catch { throw new DashError(DashError.UnexpectedError); };
+async function getApi(path, dashClass, customBody = undefined, customHeaders = {}, retries = 0) {
+	headers = {"authorization": `XBL3.0 x=${dashClass.userHash};${dashClass.xstsToken}`,"client-version": await getCurrentVersion(),"user-agent": "MCPE/UWP"};
+	if (customBody !== undefined) {
+		headers["content-type"] = "application/json";
+	}
+	Object.keys(customHeaders).forEach(key => { headers[key] = customHeaders[key]; });
+	try{ var response = await fetch(`https://pocket.realms.minecraft.net${path}`, { "headers": headers }); } catch (error) { throw new DashError(`${DashError.UnexpectedError}\nError: ${error}`); };
 	if (retries !== 0 && response.status !== 200){
 		for (var num = 1; num <= retries; num++) {
 			var response = await fetch(`https://pocket.realms.minecraft.net${path}`, { "headers": headers });
@@ -24,7 +25,7 @@ async function getApi(path, dashClass, customHeaders = {}, retries = 0) {
 			}
 			return response;
 		}
-		throw new DashError("Could not get correct response after 5 retries");
+		throw new DashError("Could not get 200 response after 5 retries");
 	}
 	return response;
 }
