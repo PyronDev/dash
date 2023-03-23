@@ -29,6 +29,7 @@
   },
   "homepage": "https://github.com/PyronDev/dash#readme",
   "devDependencies": {
+    "@types/node": "^18.15.5",
     "typescript": "^4.9.5"
   }
 }
