@@ -378,7 +378,7 @@ class realm {
             if (!(["OPERATOR", "MEMBER", "VISITOR"].includes(permission))) {
                 throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`, 0x37);
             }
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/defaultPermission`, this, { "Content-Type": "application/json" }, JSON.stringify({ "permission": permission, "xuid": userXUID }));
+            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/userPermission`, this, { "Content-Type": "application/json" }, JSON.stringify({ "permission": permission, "xuid": userXUID }));
             switch (response.status) {
                 case 404:
                     throw new DashError_1.DashError("That realm doesnt exist", 0x38);

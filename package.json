@@ -1,15 +1,16 @@
 {
   "name": "@pyrondev/dash",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "MCBE Realms javascript api wrapper",
   "main": "build/index.js",
+  "typings": "./build/index.d.ts",
   "dependencies": {
     "chalk": "4.1.2",
     "node-fetch": "2.6.9"
   },
   "scripts": {
     "test": "node test.js",
-    "build": "tsc"
+    "build": "npx tsc"
   },
   "repository": {
     "type": "git",
@@ -29,7 +30,6 @@
   },
   "homepage": "https://github.com/PyronDev/dash#readme",
   "devDependencies": {
-    "@types/node": "^18.15.5",
-    "typescript": "^4.9.5"
+    "@types/node": "^18.15.5"
   }
 }
