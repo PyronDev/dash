@@ -235,6 +235,23 @@ class realm {
             }
         });
     }
+    regenerateInvite() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, PermissionHandler_1.checkPermission)(this);
+            var response = yield (0, ApiHandler_1.postApi)(`/links/v1`, this, { "Content-Type": "application/json" }, JSON.stringify({ "type": "INFINITE", "worldId": this.realmID }));
+            console.log(yield response.text());
+            var responseJson = yield response.json();
+            switch (response.status) {
+                case 403:
+                case 404:
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x1A);
+                case 200:
+                    return yield responseJson;
+                default:
+                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x1B);
+            }
+        });
+    }
     blocklist() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);

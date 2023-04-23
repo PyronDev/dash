@@ -231,6 +231,22 @@ class realm {
 		}
 	}
 
+	async regenerateInvite() {
+
+		await checkPermission(this);
+		var response: any = await postApi(`/links/v1`, this, { "Content-Type": "application/json" }, JSON.stringify({ "type": "INFINITE", "worldId": this.realmID }));
+		var responseJson = await response.json();
+		switch (response.status) {
+			case 403:
+			case 404:
+				throw new DashError("That realm doesnt exist or you dont have access to it", 0x1A);
+			case 200:
+				return await responseJson;
+			default:
+				throw new DashError(`${DashError.UnexpectedResult} Status code: ${response.status}`, 0x1B);
+		}
+	}
+
 	async blocklist() {
 
 		await checkPermission(this);
