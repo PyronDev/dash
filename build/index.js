@@ -239,7 +239,6 @@ class realm {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
             var response = yield (0, ApiHandler_1.postApi)(`/links/v1`, this, { "Content-Type": "application/json" }, JSON.stringify({ "type": "INFINITE", "worldId": this.realmID }));
-            console.log(yield response.text());
             var responseJson = yield response.json();
             switch (response.status) {
                 case 403:
