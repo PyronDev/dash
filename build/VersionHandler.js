@@ -13,10 +13,10 @@ exports.getCurrentVersion = void 0;
 const fetch = require("node-fetch");
 function getCurrentVersion() {
     return __awaiter(this, void 0, void 0, function* () {
-        var response = yield fetch("https://raw.githubusercontent.com/MCMrARM/mc-w10-versiondb/master/versions.json.min");
-        var versions = yield response.json();
-        var matchingVersion = versions.reverse().find((array) => array[2] === 0);
-        var currentVersion = matchingVersion[0];
+        let response = yield fetch("https://raw.githubusercontent.com/MCMrARM/mc-w10-versiondb/master/versions.json.min");
+        let versions = yield response.json();
+        let matchingVersion = versions.reverse().find((array) => array[2] === 0);
+        let currentVersion = matchingVersion[0];
         return currentVersion;
     });
 }

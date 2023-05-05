@@ -15,72 +15,61 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 };
 var _realm_instances, _realm_fetchBackup, _realm_latestBackupDetails;
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.dash = void 0;
 const DashError_1 = require("./DashError");
 const VersionHandler_1 = require("./VersionHandler");
 const ApiHandler_1 = require("./ApiHandler");
-const ParamHandler_1 = require("./ParamHandler");
 const PermissionHandler_1 = require("./PermissionHandler");
-const authentiactingProperties = [
-    "userHash",
-    "xstsToken",
-    "realmID",
-    "owner"
-];
 class dash {
     constructor(auth) {
         (() => __awaiter(this, void 0, void 0, function* () {
             if (!auth.hasOwnProperty("user_hash") || !auth.hasOwnProperty("xsts_token")) {
-                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization, 0x1);
+                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
             this.userHash = auth.user_hash;
             this.xstsToken = auth.xsts_token;
             try {
-                yield (0, ApiHandler_1.getApi)("/mco/client/compatible", this);
+                yield (0, ApiHandler_1.sendApi)(this, "/mco/client/compatible", "GET");
             }
             catch (_a) {
-                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization, 0x2);
+                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
         }))();
     }
     realm(realmID) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return realm.fromID(this, realmID);
-        });
+        return Promise.resolve(realm.fromID(this, realmID));
     }
     realmFromInvite(realmInvite) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return yield realm.fromInvite(this, realmInvite);
-        });
+        return Promise.resolve(realm.fromInvite(this, realmInvite));
     }
     client() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return new client(this);
-        });
+        return Promise.resolve(new client(this));
     }
 }
+exports.dash = dash;
 class realm {
     constructor() {
         _realm_instances.add(this);
     }
     static fromID(dash, realmID) {
         return __awaiter(this, void 0, void 0, function* () {
-            var Realm = new realm();
+            let Realm = new realm();
             Realm.userHash = dash.userHash;
             Realm.xstsToken = dash.xstsToken;
-            var response = yield (0, ApiHandler_1.getApi)(`/worlds/${realmID}`, dash);
+            let response = yield (0, ApiHandler_1.sendApi)(Realm, `/worlds/${realmID}`, "GET");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm id doesnt exist", 0x3);
+                    throw new DashError_1.DashError("That realm id doesnt exist");
                 case 403:
                     Realm.owner = false;
-                    var response = yield (yield (0, ApiHandler_1.getApi)("/worlds", dash)).json();
-                    var realms = response["servers"];
-                    var matchingRealms = realms.filter((e) => e["id"] === realmID);
+                    let response = yield (yield (0, ApiHandler_1.sendApi)(dash, "/worlds", "GET")).json();
+                    let realms = response["servers"];
+                    let matchingRealms = realms.filter((e) => e["id"] === realmID);
                     if (matchingRealms.length === 1) {
                         Realm.realmID = realmID;
                     }
                     else {
-                        throw new DashError_1.DashError("You do not have access to that realm.", 0x4);
+                        throw new DashError_1.DashError("You do not have access to that realm");
                     }
                     break;
                 case 200:
@@ -89,25 +78,25 @@ class realm {
                     Realm.owner = true;
                     break;
                 default:
-                    throw new DashError_1.DashError(`An unknown status code was returned, this is usually because the realmID was invalid. Status code: ${response.status}`, 0x5);
+                    throw new DashError_1.DashError("An unknown status code was returned, this is usually because the realmID was invalid.", response.status);
             }
             return Realm;
         });
     }
     static fromInvite(dash, realmInvite) {
         return __awaiter(this, void 0, void 0, function* () {
-            var Realm = new realm();
-            var response = yield (0, ApiHandler_1.getApi)(`/worlds/v1/link/${realmInvite}`, dash);
+            let Realm = new realm();
+            let response = yield (0, ApiHandler_1.sendApi)(dash, `/worlds/v1/link/${realmInvite}`, "GET");
             switch (response.status) {
                 case 404:
                 case 403:
-                    throw new DashError_1.DashError("That realm invite doesnt exist", 0x6);
+                    throw new DashError_1.DashError("That realm invite doesnt exist", response.status);
                 case 200:
                     Realm.userHash = dash.userHash;
                     Realm.xstsToken = dash.xstsToken;
                     Realm.dash = dash;
                     Realm.realmID = (yield response.json())["id"];
-                    var response = yield (0, ApiHandler_1.getApi)(`/worlds/${Realm.realmID}`, dash);
+                    response = yield (0, ApiHandler_1.sendApi)(dash, `/worlds/${Realm.realmID}`, "GET");
                     switch (response.status) {
                         case 404:
                         case 403:
@@ -119,7 +108,7 @@ class realm {
                     }
                     break;
                 default:
-                    throw new DashError_1.DashError(`An unknown status code was returned, this is usually because the realm invite was invalid. Status code: ${response.status}`, 0x7);
+                    throw new DashError_1.DashError("An unknown status code was returned, this is usually because the realm invite was invalid", response.status);
             }
             return Realm;
         });
@@ -128,46 +117,51 @@ class realm {
     info() {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.owner) {
-                var response = yield (0, ApiHandler_1.getApi)(`/worlds/${this.realmID}`, this);
+                let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "GET");
                 switch (response.status) {
                     case 404:
-                        throw new DashError_1.DashError("That realm doesnt exist", 0x8);
+                        throw new DashError_1.DashError("That realm doesnt exist", response.status);
                     case 200:
                         return yield response.json();
                 }
             }
             else {
-                var response = yield (yield (0, ApiHandler_1.getApi)("/worlds", this)).json();
-                var realms = response["servers"];
-                var matchingRealms = realms.filter((e) => e["id"] === this.realmID);
+                let responseJson = yield (yield (0, ApiHandler_1.sendApi)(this, "/worlds", "GET")).json();
+                let realms = responseJson["servers"];
+                let matchingRealms = realms.filter((e) => e["id"] === this.realmID);
                 return matchingRealms[0];
             }
         });
     }
     address(retryMessages = true) {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (0, ApiHandler_1.getApi)(`/worlds/${this.realmID}/join`, this, {}, { "retries": 5, "returnOn": [200, 403, 404], "retryMessages": retryMessages });
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/join`, "GET", { "retry": { "retries": 5, "returnOn": [200, 403, 404], "retryMessages": retryMessages } });
             switch (response.status) {
                 case 403:
-                    throw new DashError_1.DashError("That realm seems to be inacessable", 0xB);
+                    throw new DashError_1.DashError("That realm seems to be inacessable", response.status);
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0xC);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0xD);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     onlinePlayers() {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (0, ApiHandler_1.getApi)(`/activities/live/players`, this);
-            var responseJson = yield response.json();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/activities/live/players`, "GET");
+            let responseJson = yield response.json();
+            let servers = responseJson["servers"];
+            let id = this.realmID || 0;
+            let realm = servers.find((server) => server.id === id);
+            if (!realm)
+                throw new DashError_1.DashError("Could not find realm id in list of realms");
             switch (response.status) {
                 case 200:
-                    return responseJson["servers"];
+                    return realm;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0xE);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -175,121 +169,121 @@ class realm {
     content() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.getApi)(`/world/${this.realmID}/content`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content`, "GET");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0xF);
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x10);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     subscription() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.getApi)(`/subscriptions/${this.realmID}/details`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/subscriptions/${this.realmID}/details`, "GET");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x11);
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x12);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     backups() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.getApi)(`/worlds/${this.realmID}/backups`, this);
-            var responseJson = yield response.json();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/backups`, "GET");
+            let responseJson = yield response.json();
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x13);
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
                 case 200:
                     if (!responseJson.hasOwnProperty("backups")) {
-                        throw new DashError_1.DashError(`Invalid property: object does not have a property with the name "backups"`, 0x14);
+                        throw new DashError_1.DashError(`Invalid property: object does not have a property with the name "backups"`, response.status);
                     }
                     return new backup(this, yield responseJson["backups"], __classPrivateFieldGet(this, _realm_instances, "m", _realm_latestBackupDetails), __classPrivateFieldGet(this, _realm_instances, "m", _realm_fetchBackup));
-                    ;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x15);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     invite() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.getApi)(`/links/v1?worldId=${this.realmID}`, this);
-            var responseJson = yield response.json();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/links/v1?worldId=${this.realmID}`, "GET");
+            let responseJson = yield response.json();
             switch (response.status) {
                 case 403:
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x1A);
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
                 case 200:
                     return yield responseJson[0];
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x1B);
-            }
-        });
-    }
-    regenerateInvite() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.postApi)(`/links/v1`, this, { "Content-Type": "application/json" }, JSON.stringify({ "type": "INFINITE", "worldId": this.realmID }));
-            var responseJson = yield response.json();
-            switch (response.status) {
-                case 403:
-                case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x1A);
-                case 200:
-                    return yield responseJson;
-                default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x1B);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     blocklist() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.getApi)(`/worlds/${this.realmID}/blocklist`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist`, "GET");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x1C);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x1D);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x1E);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     // POST REQUESTS //
+    regenerateInvite() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, PermissionHandler_1.checkPermission)(this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/links/v1`, "POST", {
+                "headers": { "Content-Type": "application/json" },
+                "body": { "type": "INFINITE", "worldId": this.realmID }
+            });
+            switch (response.status) {
+                case 403:
+                case 404:
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
+                case 200:
+                    return yield response.json();
+                default:
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
+            }
+        });
+    }
     blockUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.postApi)(`/worlds/${this.realmID}/blocklist/${userXUID}`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist/${userXUID}`, "POST");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x1F);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x20);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x21);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     updateConfiguration(newConfiguration) {
-        return __awaiter(this, arguments, void 0, function* () {
-            yield (0, ParamHandler_1.requiredParams)(arguments, [Object]);
+        return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var info = yield (yield (0, ApiHandler_1.getApi)(`/worlds/${this.realmID}`, this)).json();
-            var currentConfiguration = {
+            let info = yield (yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "GET")).json();
+            let currentConfiguration = {
                 "description": {
                     "name": info["name"],
                     "description": info["motd"]
@@ -298,41 +292,41 @@ class realm {
             };
             Object.keys(newConfiguration).forEach(key => {
                 if (!["description", "options"].includes(key)) {
-                    throw new DashError_1.DashError(`Configuration contained invalid key identifier \"${key}\"`, 0x22);
+                    throw new DashError_1.DashError(`Configuration contained invalid key identifier \"${key}\"`);
                 }
                 Object.keys(newConfiguration[key]).forEach(nestedKey => {
                     currentConfiguration[key][nestedKey] = newConfiguration[key][nestedKey];
                 });
             });
-            var response = yield (0, ApiHandler_1.postApi)(`/worlds/${this.realmID}/configuration`, this, { "Content-Type": "application/json" }, JSON.stringify(currentConfiguration));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/configuration`, "POST", { "headers": { "Content-Type": "application/json" }, "body": currentConfiguration });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x23);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x24);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 case 500:
                 case 400:
-                    throw new DashError_1.DashError(`Configuration formatted incorrectly \nStatus code: ${yield response.status}`, 0x25);
+                    throw new DashError_1.DashError("Configuration formatted incorrectly", response.status);
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x26);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
-    applyContent(packUUID) {
+    applyContent(packUUIDS) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.postApi)(`/world/${this.realmID}/content/`, this, { "Content-Type": "application/json" }, JSON.stringify([packUUID]));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content/`, "GET", { "headers": { "Content-Type": "application/json" }, "body": packUUIDS });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That packUUID doesnt exist", 0x27);
+                    throw new DashError_1.DashError("That packUUID doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x28);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x29);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -340,32 +334,32 @@ class realm {
     inviteUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.putApi)(`/invites/${this.realmID}/invite/update`, this, { "Content-Type": "application/json" }, JSON.stringify({ "invites": { [userXUID]: "ADD" } }));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID]: "ADD" } } });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x2D);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x2E);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x2F);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     removeUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.putApi)(`/invites/${this.realmID}/invite/update`, this, { "Content-Type": "application/json" }, JSON.stringify({ "invites": { [userXUID]: "REMOVE" } }));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID]: "REMOVE" } } });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x30);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x31);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x32);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -373,18 +367,18 @@ class realm {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
             if (!(["OPERATOR", "MEMBER", "VISITOR"].includes(permission))) {
-                throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`, 0x33);
+                throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`);
             }
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/defaultPermission`, this, { "Content-Type": "application/json" }, JSON.stringify({ "permission": permission }));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/defaultPermission`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "permission": permission } });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x34);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x35);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x36);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -392,18 +386,18 @@ class realm {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
             if (!(["OPERATOR", "MEMBER", "VISITOR"].includes(permission))) {
-                throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`, 0x37);
+                throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`);
             }
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/userPermission`, this, { "Content-Type": "application/json" }, JSON.stringify({ "permission": permission, "xuid": userXUID }));
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/userPermission`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "permission": permission, "xuid": userXUID } });
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x38);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x39);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x3A);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -411,50 +405,50 @@ class realm {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
             if (!([1, 2, 3].includes(slot))) {
-                throw new DashError_1.DashError(`Paramater at index 0 must be either: 1, 2 or 3, not ${slot}`, 0x3B);
+                throw new DashError_1.DashError(`Paramater at index 0 must be either: 1, 2 or 3, not ${slot}`);
             }
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/slot/${slot}`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/slot/${slot}`, "PUT");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x3C);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x3D);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x3E);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     open() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/open`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/open`, "PUT");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x3F);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x40);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x41);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     close() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.putApi)(`/worlds/${this.realmID}/close`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/close`, "PUT");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x42);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x43);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 200:
                     return yield response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x44);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -462,32 +456,32 @@ class realm {
     unblockUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.delApi)(`/worlds/${this.realmID}/blocklist/${userXUID}`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist/${userXUID}`, "DELETE");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x45);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x46);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x47);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     delete() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            var response = yield (0, ApiHandler_1.delApi)(`/worlds/${this.realmID}`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "DELETE");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x48);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x49);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x4A);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -495,20 +489,20 @@ class realm {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
             if (required) {
-                var response = yield (0, ApiHandler_1.putApi)(`/world/${this.realmID}/content/texturePacksRequired`, this);
+                var response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content/texturePacksRequired`, "PUT");
             }
             else {
-                var response = yield (0, ApiHandler_1.delApi)(`/world/${this.realmID}/content/texturePacksRequired`, this);
+                var response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content/texturePacksRequired`, "DELETE");
             }
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x4B);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x4C);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x4D);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
@@ -516,27 +510,27 @@ class realm {
 _realm_instances = new WeakSet(), _realm_fetchBackup = function _realm_fetchBackup(backupID) {
     return __awaiter(this, void 0, void 0, function* () {
         yield (0, PermissionHandler_1.checkPermission)(this);
-        var response = yield (0, ApiHandler_1.getApi)(`/archive/download/world/${this.realmID}/1/${backupID}`, this);
+        let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/${backupID}`, "GET");
         switch (response.status) {
             case 404:
-                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x16);
+                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
             case 200:
                 return yield response.json();
             default:
-                throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x17);
+                throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
         }
     });
 }, _realm_latestBackupDetails = function _realm_latestBackupDetails() {
     return __awaiter(this, void 0, void 0, function* () {
         yield (0, PermissionHandler_1.checkPermission)(this);
-        var response = yield (0, ApiHandler_1.getApi)(`/archive/download/world/${this.realmID}/1/latest`, this);
+        let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/latest`, "GET");
         switch (response.status) {
             case 404:
-                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", 0x18);
+                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
             case 200:
                 return yield response.json();
             default:
-                throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x19);
+                throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
         }
     });
 };
@@ -546,54 +540,52 @@ class client {
             this.userHash = dash.userHash;
             this.xstsToken = dash.xstsToken;
             try {
-                yield (0, ApiHandler_1.getApi)("/mco/client/compatible", this);
+                yield (0, ApiHandler_1.sendApi)(this, "/mco/client/compatible", "GET");
             }
             catch (_a) {
-                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization, 0x4E);
+                throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
         }))();
     }
     // GET REQUESTS //
     compatible(clientVersion = undefined) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (typeof (clientVersion) !== "number" && clientVersion != undefined) {
-                throw new TypeError(`Unexpected type passed to function`);
-            }
             if (clientVersion === undefined) {
                 clientVersion = yield (0, VersionHandler_1.getCurrentVersion)();
             }
             ;
-            var clientHeaders = { "client-version": clientVersion };
-            var response = yield (0, ApiHandler_1.getApi)("/mco/client/compatible", this, clientHeaders);
-            var responseText = yield response.text();
+            let clientHeaders = { "client-version": clientVersion };
+            let response = yield (0, ApiHandler_1.sendApi)(this, "/mco/client/compatible", "GET", clientHeaders);
+            let responseText = yield response.text();
             switch (responseText) {
                 case "COMPATIBLE":
                     return true;
                 case "OUTDATED":
                     return false;
                 default:
-                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, 0x50);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     realms() {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (yield (0, ApiHandler_1.getApi)("/worlds", this)).json();
-            if (!response.hasOwnProperty("servers")) {
-                throw new DashError_1.DashError(`Invalid property: object does not have a property with the name "servers"`, 0x51);
+            let response = yield (0, ApiHandler_1.sendApi)(this, "/worlds", "GET");
+            let responseJson = yield response.json();
+            if (!responseJson.hasOwnProperty("servers")) {
+                throw new DashError_1.DashError(`Invalid property: object does not have a property with the name "servers"`, response.status);
             }
-            return yield response["servers"];
+            return yield responseJson["servers"];
         });
     }
     realmInvitesCount() {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (0, ApiHandler_1.getApi)(`/invites/count/pending`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/count/pending`, "GET");
             return yield response.json();
         });
     }
     trialStatus() {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (0, ApiHandler_1.getApi)(`/trial/new`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/trial/new`, "GET");
             switch (response.status) {
                 case 403:
                     return { "eligible": true, "redeemed": true };
@@ -605,43 +597,41 @@ class client {
     // POST REQUESTS //
     acceptInvite(realmInvite) {
         return __awaiter(this, void 0, void 0, function* () {
-            var response = yield (0, ApiHandler_1.postApi)(`/invites/v1/link/accept/${realmInvite}`, this);
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/v1/link/accept/${realmInvite}`, "POST");
             switch (response.status) {
                 case 403:
-                    throw new DashError_1.DashError("That realm doesnt exist or you are already the owner of it", 0x52);
+                    throw new DashError_1.DashError("That realm doesnt exist or you are already the owner of it", response.status);
                 case 200:
                     return response.json();
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x53);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
     // DELETE REQUESTS //
     removeRealm(realmID) {
-        return __awaiter(this, arguments, void 0, function* () {
-            yield (0, ParamHandler_1.requiredParams)(arguments, [Number]);
-            var response = yield (0, ApiHandler_1.delApi)(`/invites/${realmID}`, this);
+        return __awaiter(this, void 0, void 0, function* () {
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${realmID}`, "DELETE");
             switch (response.status) {
                 case 404:
-                    throw new DashError_1.DashError("That realm doesnt exist", 0x54);
+                    throw new DashError_1.DashError("That realm doesnt exist", response.status);
                 case 403:
-                    throw new DashError_1.DashError("You do not have access to that realm", 0x55);
+                    throw new DashError_1.DashError("You do not have access to that realm", response.status);
                 case 204:
                     return;
                 default:
-                    throw new DashError_1.DashError(`${DashError_1.DashError.UnexpectedResult} Status code: ${response.status}`, 0x56);
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
     }
 }
 class backup {
     constructor(realm, backups, latestBackupFunction, fetchBackupFunction) {
-        authentiactingProperties.forEach(property => {
-            this[property] = realm[property];
+        Object.keys(realm).forEach((key) => {
+            this[key] = realm[key];
         });
         this.backups = backups;
         this.latest = latestBackupFunction;
         this.fetchBackup = fetchBackupFunction;
     }
 }
-module.exports = { dash };

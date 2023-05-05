@@ -1,2 +1,2 @@
-declare function requiredParams(Arguments: IArguments, argTypes: any[]): Promise<void>;
+declare function requiredParams(Arguments: IArguments, argTypes: object[]): Promise<void>;
 export { requiredParams };

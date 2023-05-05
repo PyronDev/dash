@@ -2,18 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashError = void 0;
 class DashError extends Error {
-    constructor(message, errorID, ...params) {
+    constructor(message, statusCode, ...params) {
         super(...params);
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, DashError);
         }
         this.name = "DashError";
         this.message = message;
-        if (errorID) {
-            this.errorID = "0x" + errorID.toString(16).toUpperCase();
-        }
         this.date = new Date();
-        this.statusCode = Number.parseInt(message.split('Status code: ')[1]);
+        this.statusCode = statusCode || null;
     }
     static get UnexpectedError() {
         return "An unexpected error occurred, this is usually because the authentication is invalid";

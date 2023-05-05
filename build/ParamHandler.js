@@ -13,8 +13,8 @@ exports.requiredParams = void 0;
 const DashError_1 = require("./DashError");
 function requiredParams(Arguments, argTypes) {
     return __awaiter(this, void 0, void 0, function* () {
-        var receivedArgsLen = Arguments.length;
-        var expectedArgsLen = argTypes.length;
+        let receivedArgsLen = Arguments.length;
+        let expectedArgsLen = argTypes.length;
         if (receivedArgsLen != expectedArgsLen) {
             throw new DashError_1.DashError(`Function expected ${expectedArgsLen} arguments, but received ${receivedArgsLen}.`);
         }
