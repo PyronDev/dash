@@ -49,7 +49,7 @@ function sendApi(dash, path, method, data = {}) {
                 break;
             default:
                 try {
-                    var response = yield fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || {} });
+                    var response = yield fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || undefined });
                 }
                 catch (_p) {
                     throw new DashError_1.DashError(DashError_1.DashError.UnexpectedError);

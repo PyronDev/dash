@@ -31,7 +31,7 @@ async function sendApi(dash: Dash | Realm, path: string, method: string, data: a
 			break;
 		default:
 			try {
-				var response = await fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || {} });
+				var response = await fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || undefined });
 			} catch {
 				throw new DashError(DashError.UnexpectedError);
 			};

@@ -1,6 +1,6 @@
 {
   "name": "@pyrondev/dash",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "MCBE Realms javascript api wrapper",
   "main": "build/index.js",
   "typings": "./build/index.d.ts",
