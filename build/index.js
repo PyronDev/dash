@@ -20,21 +20,49 @@ const DashError_1 = require("./DashError");
 const VersionHandler_1 = require("./VersionHandler");
 const ApiHandler_1 = require("./ApiHandler");
 const PermissionHandler_1 = require("./PermissionHandler");
+const dash_auth_1 = require("@pyrondev/dash-auth");
 class dash {
     constructor(auth) {
         (() => __awaiter(this, void 0, void 0, function* () {
-            if (!auth.hasOwnProperty("user_hash") || !auth.hasOwnProperty("xsts_token")) {
+            if (!auth.token.hasOwnProperty("user_hash") || !auth.token.hasOwnProperty("xsts_token")) {
                 throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
-            this.userHash = auth.user_hash;
-            this.xstsToken = auth.xsts_token;
+            this.userHash = auth.token.user_hash;
+            this.xstsToken = auth.token.xsts_token;
+            this.args = auth.args;
+            this.isCombo = auth.isCombo;
             try {
                 yield (0, ApiHandler_1.sendApi)(this, "/mco/client/compatible", "GET");
             }
             catch (_a) {
                 throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
+            let expiryDate = new Date(auth.token.expires_on).getTime();
+            let delay = expiryDate - new Date().getTime();
+            setTimeout(this.refreshCredentials.bind(this), delay - 60000);
         }))();
+    }
+    refreshCredentials() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let auth;
+                if (this.isCombo) {
+                    auth = yield dash_auth_1.comboAuthenticate.apply(null, this.args);
+                }
+                else {
+                    auth = yield dash_auth_1.msaCodeAuthenticate.apply(null, this.args);
+                }
+                this.userHash = auth.token.user_hash;
+                this.xstsToken = auth.token.xsts_token;
+                console.log("Credentials refreshed successfully");
+                let expiryDate = new Date(auth.token.expires_on).getTime();
+                let delay = expiryDate - new Date().getTime();
+                setTimeout(this.refreshCredentials.bind(this), delay - 60000);
+            }
+            catch (error) {
+                console.log("Error occurred when trying to refresh credentials: " + error);
+            }
+        });
     }
     realm(realmID) {
         return Promise.resolve(realm.fromID(this, realmID));

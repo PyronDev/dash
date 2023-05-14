@@ -2,7 +2,10 @@ import { Dash, Realm, Auth } from './interfaces';
 declare class dash implements Dash {
     userHash?: string;
     xstsToken?: string;
+    args?: any;
+    isCombo?: boolean;
     constructor(auth: Auth);
+    refreshCredentials(): Promise<void>;
     realm(realmID: number): Promise<realm>;
     realmFromInvite(realmInvite: string): Promise<realm>;
     client(): Promise<client>;

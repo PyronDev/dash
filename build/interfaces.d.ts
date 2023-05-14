@@ -10,10 +10,8 @@ interface Realm {
     dash?: Dash;
 }
 interface Auth {
-    xuid: string;
-    user_hash: string;
-    xsts_token: string;
-    display_claims: object;
-    expires_on: string;
+    token: any;
+    args: any;
+    isCombo: boolean;
 }
 export { Dash, Realm, Auth };

@@ -3,20 +3,44 @@ import { getCurrentVersion } from './VersionHandler';
 import { sendApi } from './ApiHandler';
 import { checkPermission } from './PermissionHandler';
 import { Dash, Realm, Auth } from './interfaces';
-
+import { comboAuthenticate, msaCodeAuthenticate } from '@pyrondev/dash-auth';
 class dash implements Dash {
 	userHash?: string;
 	xstsToken?: string;
+	args?: any;
+	isCombo?: boolean;
 	constructor(auth: Auth) {
-
 		(async () => {
-			if (!auth.hasOwnProperty("user_hash") || !auth.hasOwnProperty("xsts_token")) {
+			if (!auth.token.hasOwnProperty("user_hash") || !auth.token.hasOwnProperty("xsts_token")) {
 				throw new DashError(DashError.InvalidAuthorization);
 			}
-			this.userHash = auth.user_hash;
-			this.xstsToken = auth.xsts_token;
+			this.userHash = auth.token.user_hash;
+			this.xstsToken = auth.token.xsts_token;
+			this.args = auth.args;
+			this.isCombo = auth.isCombo;
 			try { await sendApi(this, "/mco/client/compatible", "GET"); } catch { throw new DashError(DashError.InvalidAuthorization); }
+			let expiryDate = new Date(auth.token.expires_on).getTime();
+			let delay = expiryDate - new Date().getTime();
+			setTimeout(this.refreshCredentials.bind(this), delay - 60000);
 		})();
+	}
+	async refreshCredentials() {
+		try {
+			let auth: any;
+			if (this.isCombo) {
+				auth = await comboAuthenticate.apply(null, this.args);
+			} else {
+				auth = await msaCodeAuthenticate.apply(null, this.args);
+			}
+			this.userHash = auth.token.user_hash;
+			this.xstsToken = auth.token.xsts_token;
+			console.log("Credentials refreshed successfully");
+			let expiryDate = new Date(auth.token.expires_on).getTime();
+			let delay = expiryDate - new Date().getTime();
+			setTimeout(this.refreshCredentials.bind(this), delay - 60000);
+		} catch (error) {
+			console.log("Error occurred when trying to refresh credentials: " + error);
+		}
 	}
 	realm(realmID: number) {
 		return Promise.resolve(realm.fromID(this, realmID));
