@@ -1,6 +1,10 @@
 interface Dash {
 	userHash?: string;
 	xstsToken?: string;
+	isCombo?: boolean;
+	token?: any;
+	args?: any;
+	dash?: any;
 }
 
 interface Realm {

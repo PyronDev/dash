@@ -8,12 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-};
-var _realm_instances, _realm_fetchBackup, _realm_latestBackupDetails;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.dash = void 0;
 const DashError_1 = require("./DashError");
@@ -29,6 +23,7 @@ class dash {
             }
             this.userHash = auth.token.user_hash;
             this.xstsToken = auth.token.xsts_token;
+            this.token = auth.token;
             this.args = auth.args;
             this.isCombo = auth.isCombo;
             try {
@@ -37,32 +32,7 @@ class dash {
             catch (_a) {
                 throw new DashError_1.DashError(DashError_1.DashError.InvalidAuthorization);
             }
-            let expiryDate = new Date(auth.token.expires_on).getTime();
-            let delay = expiryDate - new Date().getTime();
-            setTimeout(this.refreshCredentials.bind(this), delay - 60000);
         }))();
-    }
-    refreshCredentials() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                let auth;
-                if (this.isCombo) {
-                    auth = yield dash_auth_1.comboAuthenticate.apply(null, this.args);
-                }
-                else {
-                    auth = yield dash_auth_1.msaCodeAuthenticate.apply(null, this.args);
-                }
-                this.userHash = auth.token.user_hash;
-                this.xstsToken = auth.token.xsts_token;
-                console.log("Credentials refreshed successfully");
-                let expiryDate = new Date(auth.token.expires_on).getTime();
-                let delay = expiryDate - new Date().getTime();
-                setTimeout(this.refreshCredentials.bind(this), delay - 60000);
-            }
-            catch (error) {
-                console.log("Error occurred when trying to refresh credentials: " + error);
-            }
-        });
     }
     realm(realmID) {
         return Promise.resolve(realm.fromID(this, realmID));
@@ -76,14 +46,14 @@ class dash {
 }
 exports.dash = dash;
 class realm {
-    constructor() {
-        _realm_instances.add(this);
-    }
     static fromID(dash, realmID) {
         return __awaiter(this, void 0, void 0, function* () {
             let Realm = new realm();
             Realm.userHash = dash.userHash;
             Realm.xstsToken = dash.xstsToken;
+            Realm.args = dash.args;
+            Realm.token = dash.token;
+            Realm.isCombo = dash.isCombo;
             let response = yield (0, ApiHandler_1.sendApi)(Realm, `/worlds/${realmID}`, "GET");
             switch (response.status) {
                 case 404:
@@ -101,12 +71,11 @@ class realm {
                     }
                     break;
                 case 200:
-                    Realm.dash = dash;
                     Realm.realmID = realmID;
                     Realm.owner = true;
                     break;
                 default:
-                    throw new DashError_1.DashError("An unknown status code was returned, this is usually because the realmID was invalid.", response.status);
+                    throw new DashError_1.DashError("An unknown status code was returned, this is usually because the realmID was invalid.");
             }
             return Realm;
         });
@@ -122,7 +91,9 @@ class realm {
                 case 200:
                     Realm.userHash = dash.userHash;
                     Realm.xstsToken = dash.xstsToken;
-                    Realm.dash = dash;
+                    Realm.args = dash.args;
+                    Realm.token = dash.token;
+                    Realm.isCombo = dash.isCombo;
                     Realm.realmID = (yield response.json())["id"];
                     response = yield (0, ApiHandler_1.sendApi)(dash, `/worlds/${Realm.realmID}`, "GET");
                     switch (response.status) {
@@ -141,9 +112,39 @@ class realm {
             return Realm;
         });
     }
+    refreshCredentials() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let auth;
+                if (this.isCombo) {
+                    auth = yield dash_auth_1.comboAuthenticate.apply(null, this.args);
+                }
+                else {
+                    auth = yield dash_auth_1.msaCodeAuthenticate.apply(null, this.args);
+                }
+                this.userHash = auth.token.user_hash;
+                this.xstsToken = auth.token.xsts_token;
+                this.token = auth.token;
+                console.log("Credentials refreshed successfully");
+            }
+            catch (error) {
+                console.log("Error occurred when trying to refresh credentials: " + error);
+            }
+        });
+    }
+    checkCredentials() {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            let expires = (_a = this.token) === null || _a === void 0 ? void 0 : _a.expires_on;
+            if (!expires || new Date() >= new Date(expires)) {
+                this.refreshCredentials();
+            }
+        });
+    }
     // GET REQUESTS //
     info() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             if (this.owner) {
                 let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "GET");
                 switch (response.status) {
@@ -163,6 +164,7 @@ class realm {
     }
     address(retryMessages = true) {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/join`, "GET", { "retry": { "retries": 5, "returnOn": [200, 403, 404], "retryMessages": retryMessages } });
             switch (response.status) {
                 case 403:
@@ -178,6 +180,7 @@ class realm {
     }
     onlinePlayers() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/activities/live/players`, "GET");
             let responseJson = yield response.json();
             let servers = responseJson["servers"];
@@ -197,6 +200,7 @@ class realm {
     content() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content`, "GET");
             switch (response.status) {
                 case 404:
@@ -211,6 +215,7 @@ class realm {
     subscription() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/subscriptions/${this.realmID}/details`, "GET");
             switch (response.status) {
                 case 404:
@@ -225,6 +230,7 @@ class realm {
     backups() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/backups`, "GET");
             let responseJson = yield response.json();
             switch (response.status) {
@@ -234,7 +240,37 @@ class realm {
                     if (!responseJson.hasOwnProperty("backups")) {
                         throw new DashError_1.DashError(`Invalid property: object does not have a property with the name "backups"`, response.status);
                     }
-                    return new backup(this, yield responseJson["backups"], __classPrivateFieldGet(this, _realm_instances, "m", _realm_latestBackupDetails), __classPrivateFieldGet(this, _realm_instances, "m", _realm_fetchBackup));
+                    return yield responseJson["backups"];
+                default:
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
+            }
+        });
+    }
+    fetchBackup(backupID) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/${backupID}`, "GET");
+            switch (response.status) {
+                case 404:
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
+                case 200:
+                    return yield response.json();
+                default:
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
+            }
+        });
+    }
+    worldDownload() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/latest`, "GET");
+            switch (response.status) {
+                case 404:
+                    throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
+                case 200:
+                    return yield response.json();
                 default:
                     throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
@@ -243,6 +279,7 @@ class realm {
     invite() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/links/v1?worldId=${this.realmID}`, "GET");
             let responseJson = yield response.json();
             switch (response.status) {
@@ -259,6 +296,7 @@ class realm {
     blocklist() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist`, "GET");
             switch (response.status) {
                 case 404:
@@ -276,6 +314,7 @@ class realm {
     regenerateInvite() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/links/v1`, "POST", {
                 "headers": { "Content-Type": "application/json" },
                 "body": { "type": "INFINITE", "worldId": this.realmID }
@@ -294,6 +333,7 @@ class realm {
     blockUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist/${userXUID}`, "POST");
             switch (response.status) {
                 case 404:
@@ -310,6 +350,7 @@ class realm {
     updateConfiguration(newConfiguration) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let info = yield (yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "GET")).json();
             let currentConfiguration = {
                 "description": {
@@ -345,6 +386,7 @@ class realm {
     applyContent(packUUIDS) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content/`, "GET", { "headers": { "Content-Type": "application/json" }, "body": packUUIDS });
             switch (response.status) {
                 case 404:
@@ -359,10 +401,27 @@ class realm {
         });
     }
     // PUT REQUESTS //
+    loadBackup(backupID) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/backups?backupId=${backupID}&clientSupportsRetries`, "PUT", { "headers": { "Content-Type": "application/json" } });
+            switch (response.status) {
+                case 404:
+                    throw new DashError_1.DashError("That backupID does not exist", response.status);
+                case 503:
+                case 204:
+                    return;
+                default:
+                    throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
+            }
+        });
+    }
     inviteUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID]: "ADD" } } });
+            yield this.checkCredentials();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID.toString()]: "ADD" } } });
             switch (response.status) {
                 case 404:
                     throw new DashError_1.DashError("That realm doesnt exist", response.status);
@@ -378,7 +437,8 @@ class realm {
     removeUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
-            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID]: "REMOVE" } } });
+            yield this.checkCredentials();
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${this.realmID}/invite/update`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "invites": { [userXUID.toString()]: "REMOVE" } } });
             switch (response.status) {
                 case 404:
                     throw new DashError_1.DashError("That realm doesnt exist", response.status);
@@ -394,6 +454,7 @@ class realm {
     setDefaultPermission(permission) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             if (!(["OPERATOR", "MEMBER", "VISITOR"].includes(permission))) {
                 throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`);
             }
@@ -413,10 +474,11 @@ class realm {
     setUserPermission(userXUID, permission) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             if (!(["OPERATOR", "MEMBER", "VISITOR"].includes(permission))) {
                 throw new DashError_1.DashError(`Paramater at index 0 must be either: \"OPERATOR\", \"MEMBER\" or \"VISITOR\", not \"${permission}\"`);
             }
-            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/userPermission`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "permission": permission, "xuid": userXUID } });
+            let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/userPermission`, "PUT", { "headers": { "Content-Type": "application/json" }, "body": { "permission": permission, "xuid": userXUID.toString() } });
             switch (response.status) {
                 case 404:
                     throw new DashError_1.DashError("That realm doesnt exist", response.status);
@@ -432,6 +494,7 @@ class realm {
     activateSlot(slot) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             if (!([1, 2, 3].includes(slot))) {
                 throw new DashError_1.DashError(`Paramater at index 0 must be either: 1, 2 or 3, not ${slot}`);
             }
@@ -451,6 +514,7 @@ class realm {
     open() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/open`, "PUT");
             switch (response.status) {
                 case 404:
@@ -467,6 +531,7 @@ class realm {
     close() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/close`, "PUT");
             switch (response.status) {
                 case 404:
@@ -484,6 +549,7 @@ class realm {
     unblockUser(userXUID) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}/blocklist/${userXUID}`, "DELETE");
             switch (response.status) {
                 case 404:
@@ -500,6 +566,7 @@ class realm {
     delete() {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/worlds/${this.realmID}`, "DELETE");
             switch (response.status) {
                 case 404:
@@ -516,6 +583,7 @@ class realm {
     texturePacksRequired(required) {
         return __awaiter(this, void 0, void 0, function* () {
             yield (0, PermissionHandler_1.checkPermission)(this);
+            yield this.checkCredentials();
             if (required) {
                 var response = yield (0, ApiHandler_1.sendApi)(this, `/world/${this.realmID}/content/texturePacksRequired`, "PUT");
             }
@@ -535,38 +603,14 @@ class realm {
         });
     }
 }
-_realm_instances = new WeakSet(), _realm_fetchBackup = function _realm_fetchBackup(backupID) {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield (0, PermissionHandler_1.checkPermission)(this);
-        let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/${backupID}`, "GET");
-        switch (response.status) {
-            case 404:
-                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
-            case 200:
-                return yield response.json();
-            default:
-                throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
-        }
-    });
-}, _realm_latestBackupDetails = function _realm_latestBackupDetails() {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield (0, PermissionHandler_1.checkPermission)(this);
-        let response = yield (0, ApiHandler_1.sendApi)(this, `/archive/download/world/${this.realmID}/1/latest`, "GET");
-        switch (response.status) {
-            case 404:
-                throw new DashError_1.DashError("That realm doesnt exist or you dont have access to it", response.status);
-            case 200:
-                return yield response.json();
-            default:
-                throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
-        }
-    });
-};
 class client {
     constructor(dash) {
         (() => __awaiter(this, void 0, void 0, function* () {
             this.userHash = dash.userHash;
             this.xstsToken = dash.xstsToken;
+            this.args = dash.args;
+            this.token = dash.token;
+            this.isCombo = dash.isCombo;
             try {
                 yield (0, ApiHandler_1.sendApi)(this, "/mco/client/compatible", "GET");
             }
@@ -575,9 +619,38 @@ class client {
             }
         }))();
     }
+    refreshCredentials() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let auth;
+                if (this.isCombo) {
+                    auth = yield dash_auth_1.comboAuthenticate.apply(null, this.args);
+                }
+                else {
+                    auth = yield dash_auth_1.msaCodeAuthenticate.apply(null, this.args);
+                }
+                this.userHash = auth.token.user_hash;
+                this.xstsToken = auth.token.xsts_token;
+                this.token = auth.token;
+                console.log("Credentials refreshed successfully");
+            }
+            catch (error) {
+                console.log("Error occurred when trying to refresh credentials: " + error);
+            }
+        });
+    }
+    checkCredentials() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let expires = this.token.expires_on;
+            if (!expires || new Date() >= new Date(expires)) {
+                this.refreshCredentials();
+            }
+        });
+    }
     // GET REQUESTS //
     compatible(clientVersion = undefined) {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             if (clientVersion === undefined) {
                 clientVersion = yield (0, VersionHandler_1.getCurrentVersion)();
             }
@@ -597,6 +670,7 @@ class client {
     }
     realms() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, "/worlds", "GET");
             let responseJson = yield response.json();
             if (!responseJson.hasOwnProperty("servers")) {
@@ -607,12 +681,14 @@ class client {
     }
     realmInvitesCount() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/count/pending`, "GET");
             return yield response.json();
         });
     }
     trialStatus() {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/trial/new`, "GET");
             switch (response.status) {
                 case 403:
@@ -625,6 +701,7 @@ class client {
     // POST REQUESTS //
     acceptInvite(realmInvite) {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/v1/link/accept/${realmInvite}`, "POST");
             switch (response.status) {
                 case 403:
@@ -639,6 +716,7 @@ class client {
     // DELETE REQUESTS //
     removeRealm(realmID) {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this.checkCredentials();
             let response = yield (0, ApiHandler_1.sendApi)(this, `/invites/${realmID}`, "DELETE");
             switch (response.status) {
                 case 404:
@@ -651,15 +729,5 @@ class client {
                     throw new DashError_1.DashError(DashError_1.DashError.UnexpectedResult, response.status);
             }
         });
-    }
-}
-class backup {
-    constructor(realm, backups, latestBackupFunction, fetchBackupFunction) {
-        Object.keys(realm).forEach((key) => {
-            this[key] = realm[key];
-        });
-        this.backups = backups;
-        this.latest = latestBackupFunction;
-        this.fetchBackup = fetchBackupFunction;
     }
 }

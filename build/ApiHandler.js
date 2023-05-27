@@ -49,7 +49,9 @@ function sendApi(dash, path, method, data = {}) {
                 break;
             default:
                 try {
-                    var response = yield fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || undefined });
+                    var response = yield fetch(`https://pocket.realms.minecraft.net${path}`, {
+                        method: method, headers: headers, body: JSON.stringify(JSON.stringify(data.body) || undefined)
+                    });
                 }
                 catch (_p) {
                     throw new DashError_1.DashError(DashError_1.DashError.UnexpectedError);
@@ -57,7 +59,7 @@ function sendApi(dash, path, method, data = {}) {
                 ;
                 if (!((_h = (_g = data.retry) === null || _g === void 0 ? void 0 : _g.returnOn) === null || _h === void 0 ? void 0 : _h.includes(response.status))) {
                     for (let num = 1; num <= ((_j = data.retry) === null || _j === void 0 ? void 0 : _j.retries); num++) {
-                        let response = yield fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) });
+                        let response = yield fetch(`https://pocket.realms.minecraft.net${path}`, { method: method, headers: headers, body: JSON.stringify(data.body) || undefined });
                         if ((_l = (_k = data.retry) === null || _k === void 0 ? void 0 : _k.returnOn) === null || _l === void 0 ? void 0 : _l.includes(response.status))
                             return response;
                         let date = new Date();
