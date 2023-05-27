@@ -50,7 +50,7 @@ function sendApi(dash, path, method, data = {}) {
             default:
                 try {
                     var response = yield fetch(`https://pocket.realms.minecraft.net${path}`, {
-                        method: method, headers: headers, body: JSON.stringify(JSON.stringify(data.body) || undefined)
+                        method: method, headers: headers, body: JSON.stringify(data.body) || undefined
                     });
                 }
                 catch (_p) {

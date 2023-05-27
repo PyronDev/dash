@@ -32,7 +32,7 @@ async function sendApi(dash: Dash | Realm, path: string, method: string, data: a
 		default:
 			try {
 				var response = await fetch(`https://pocket.realms.minecraft.net${path}`, {
-					method: method, headers: headers, body: JSON.stringify(JSON.stringify(data.body) || undefined)
+					method: method, headers: headers, body: JSON.stringify(data.body) || undefined
 				});
 			} catch {
 				throw new DashError(DashError.UnexpectedError);
